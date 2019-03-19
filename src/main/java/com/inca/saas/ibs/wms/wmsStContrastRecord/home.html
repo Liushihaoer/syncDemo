@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+
+<head>
+<title th:text="#{物流库存对照} + #{列表}"></title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta charset="UTF-8" />
+<object th:include="template/table::head" th:remove="tag"></object>
+
+<style type="text/css">
+table.dataTable.display tbody tr.hongse td{
+	background-color:#ffcece!important;
+}
+</style>
+<script th:inline="javascript">
+//<![CDATA[
+//自定义数据样式
+function columnConfig(tableid, column) {
+	return column;
+}
+
+function initTableToolbar() {
+	addButtonToToolbar("synwmsst", /*[[#{获取物流库存}]]*/, synwmsst, "");
+	addHotkeyToButton("#query-btn", "F2");
+}
+
+function synwmsst(obj){
+   	var url = /*[[@{{funcPath}/synwmsst(funcPath=${funcPath})}]]*/;
+	$.get(url, function(data) {
+		if(data == '1'){
+			bootbox.alert('获取物流库存请求已发送');
+			return false;
+		}else{
+			checkAsyncTask(data, function() {
+				$("#datatable").DataTable().ajax.reload();
+			});
+		}
+	});
+}
+    
+//增加界面颜色控制 yangchenxiao 20170411
+function reconfigTable(tableid, config) {
+	if (tableid == 'datatable') {
+		config.ajax = doSearch;
+		config.rowCallback = function( row, data, index ) {
+	        if (data['colorFlag']=="红色") {
+	        	$(row).addClass("hongse");
+	        	color = "#FF6699";
+	        }else{
+	        	color = "#CCFFFF";
+	        }
+	      };
+	} 
+	return config;
+}
+
+
+var cusDomain;
+var asynccallback;
+function checkAsyncTask(domain, callback) {
+	cusDomain = domain;
+	asynccallback = callback;
+	showAsyncTaskDialog();
+	setTimeout(_checkAsyncTask, 1000);
+}
+
+function _checkAsyncTask() {
+	var url = "/IBSWMS006/taskStatus?cusDomain=" + cusDomain;
+	$.get(url, function(result) {
+		var max = result.maxStep;
+		if (max > 0) {
+			var current = result.currentStep;
+			if (current >= 0) {
+				var width = parseInt(current / max * 100);
+				$('.asynctaskbar').css('width', width + '%').attr('aria-valuenow', width);
+			}
+		}
+		var error = result.error;
+		if (error) {
+			$('#' + _asynctask_process_dialogid).modal('hide');
+			bootbox.alert(error);
+		} else {
+			if (result.status == 'finish') {
+				$('#' + _asynctask_process_dialogid).modal('hide');
+				bootbox.alert(result.result);
+				if (asynccallback) {
+					asynccallback();
+				}
+			} else {
+				setTimeout(_checkAsyncTask, 1000);
+			}
+		}
+	});
+}
+
+var _asynctask_process_dialogid = "_asynctask_process_dialogid";
+function showAsyncTaskDialog() {
+	var dialog = $('#' + _asynctask_process_dialogid);
+	if (dialog.size() == 0) {
+		dialog = $('<div id="' + _asynctask_process_dialogid + '" class="modal fade">'
+				+ '<div class="modal-dialog modal-sm">'
+				+ '<div class="modal-content">'
+				+ '<div class="modal-body">'
+				+ '<div style="width:100%; text-align:center"><span style="font-size:11pt; font-weight:bold; margin-left:10px">正在执行操作,请稍等...</span></div>'
+				+ '<br/>'
+				+ '<div class="progress">'
+				+ '<div class="asynctaskbar progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 0%">'
+				+ '<span class="sr-only">100% Complete</span>'
+				+ '</div>'
+				+ '</div>'
+				+ '</div></div></div></div>');
+		dialog.appendTo($(document.body));
+	} else {
+		$('.asynctaskbar').css('width',"0%").attr('aria-valuenow', 0);
+		dialog = dialog.first();
+	}
+	
+	if (dialog) {
+		dialog.modal({show: true, keyboard: false, backdrop: false});
+	}
+}
+
+
+//]]>
+</script>
+
+</head>
+
+<body>
+	<div class="container">
+		<div class="page-header"> 
+			<div th:replace="template/table::title"></div>
+			<div class="query">
+				<form class="form-inline query-form" th:action="@{{funcPath}/search(funcPath=${funcPath})}" method="post" th:object="${wms_wmsStContrastRecord_query}">
+                    <div class="form-group form-group-sm">
+                        <label for="keyword" th:text='#{关键字}'></label>
+                        <input class="form-control" type="text" th:field="*{keyword}" placeholder="商品编码/商品名称/批号"/>
+                    </div>
+					<button type="submit" class="btn btn-primary btn-sm query-btn" id="query-btn" th:text="#{查询}"></button>
+					<button type="reset" class="btn btn-default btn-sm" th:text="#{重置}"></button>
+				</form>
+			</div>
+		</div>
+		<div th:replace="template/table::table">
+		</div>
+	</div>
+</body>
+
+</html>

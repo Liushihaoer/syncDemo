@@ -1,4 +1,4 @@
-package com.syncDemo.splitDate;
+package com.demo.splitDate;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
